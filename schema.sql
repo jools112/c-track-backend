@@ -1,10 +1,22 @@
 --
--- File generated with SQLiteStudio v3.3.3 on Mon May 10 10:49:22 2021
+-- File generated with SQLiteStudio v3.3.3 on Tue May 11 16:35:57 2021
 --
 -- Text encoding used: UTF-8
 --
 PRAGMA foreign_keys = off;
 BEGIN TRANSACTION;
+
+-- Table: calendar_entries
+DROP TABLE IF EXISTS calendar_entries;
+
+CREATE TABLE calendar_entries (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    meal_id  INT,
+    food_id  INTEGER,
+    date     DATE,
+    quantity INTEGER
+);
+
 
 -- Table: food
 DROP TABLE IF EXISTS food;
@@ -20,8 +32,9 @@ CREATE TABLE food (
 DROP TABLE IF EXISTS meal_food;
 
 CREATE TABLE meal_food (
-    meal_id INTEGER,
-    food_id INT
+    meal_id  INTEGER,
+    food_id  INT,
+    quantity INTEGER
 );
 
 
