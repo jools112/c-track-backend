@@ -3,6 +3,8 @@ from flask import jsonify, request
 import sqlite3
 import os
 import json
+sqlite3.paramstyle = 'named'
+
 
 DEFAULT_PATH = os.path.join(os.path.dirname(__file__), 'database.sqlite3')
 
@@ -41,29 +43,29 @@ def get_day_summary():
       print('date finns')
       conn = db_connect()
       cursor = conn.cursor()
-      cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.food_id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date='" + date +"'")
+      cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.food_id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date=:date", {"date":date})
       row = cursor.fetchall()
       resp = jsonify(row)
       entries = []
       for li in row:
         isMeal = True if li[0] != None else False
         if isMeal:
-          cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id='" + str(li[2]) + "'")
+          cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id=:mealId", {"mealId":str(li[2])})
           meals = cursor.fetchall()
           kcalCount = 0
+          weightCount = 0
           for ingredient in meals:
             kcalCount += 0.01 * ingredient[1] * ingredient[2]
-            print('adding ' +str(kcalCount)+  ' calories to meal: ' + li[0]  )
-          
+            weightCount +=  ingredient[2]
+            #print('adding ' +str(kcalCount)+  ' calories to meal: ' + li[0] + ' with total weight '+ str(weightCount) + ' and calories per 100g: ' + str(100*kcalCount/weightCount) )
+      
         entries.append({
           'name': li[0] if isMeal else li[1], 
           'id':li[2] if isMeal else li[3], 
           'quantity':li[4], 
-          'caloriesPer100':li[5],
-          'calories': 0.01 * li[4] * li[5] if li[5]!=None else kcalCount
+          'caloriesPer100':  round(100*kcalCount/weightCount) if isMeal else li[5],
+          'calories': round(0.01 * li[4] * li[5]) if li[5]!=None else round(kcalCount)
         })
-
-     
       
     else:
       entries = "validation failed"
