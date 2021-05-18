@@ -1,5 +1,5 @@
-from flask import Flask
-from flask import jsonify, request
+from flask import Flask, jsonify, request
+from flask_cors import CORS
 import sqlite3
 import os
 import json
@@ -13,6 +13,7 @@ def db_connect(db_path=DEFAULT_PATH):
     return con
 
 app = Flask(__name__)
+CORS(app)
 
 @app.route('/')
 def index():
@@ -74,4 +75,4 @@ def get_day_summary():
     print('asdf')
     print(e)
   
-  return json.dumps(entries)
+  return jsonify(entries)
