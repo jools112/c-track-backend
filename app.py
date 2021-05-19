@@ -35,6 +35,33 @@ def get_meals():
   meal_results = cur.fetchall()
   return  json.dumps({'meals:' : meal_results})
 
+@app.route('/search')
+def get_search_results():
+  try: 
+    query = request.args.get('query')
+    if query:
+      conn = db_connect()
+      cursor = conn.cursor()
+      cursor.execute("SELECT name, calories FROM food WHERE name LIKE :query", {"query": '%' + query + '%'})
+      food_hits = cursor.fetchall()
+      cursor.execute("SELECT name FROM meals WHERE name LIKE :query", {"query":'%' + query + '%'})
+      meal_hits = cursor.fetchall()
+      results = []
+
+      for food in food_hits[0:5]:
+        results.append({'FOODname' : food[0], 'calories' : food[1]})
+        
+      for meal in meal_hits[0:5]:
+        results.append({'MEALname': meal[0]})
+    
+    else: 
+      results = "validation failed"
+      
+  except Exception as e:
+    print(e)
+
+  return jsonify(results)
+
 @app.route('/day-summary')
 def get_day_summary():
   resp = None
@@ -72,7 +99,6 @@ def get_day_summary():
       entries = "validation failed"
     
   except Exception as e:
-    print('asdf')
     print(e)
   
   return jsonify(entries)
