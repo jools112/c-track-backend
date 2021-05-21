@@ -39,66 +39,85 @@ def get_meals():
 def get_search_results():
   try: 
     query = request.args.get('query')
+    print('user searched for: ' + query)
+
     if query:
       conn = db_connect()
       cursor = conn.cursor()
-      cursor.execute("SELECT name, calories FROM food WHERE name LIKE :query", {"query": '%' + query + '%'})
+      cursor.execute("SELECT name, id, calories FROM food WHERE name LIKE :query", {"query": '%' + query + '%'})
       food_hits = cursor.fetchall()
-      cursor.execute("SELECT name FROM meals WHERE name LIKE :query", {"query":'%' + query + '%'})
+      cursor.execute("SELECT name, id FROM meals WHERE name LIKE :query", {"query":'%' + query + '%'})
       meal_hits = cursor.fetchall()
       results = []
 
-      for food in food_hits[0:5]:
-        results.append({'FOODname' : food[0], 'calories' : food[1]})
+      for food in food_hits[0:5]: #TODO test new endpoint
+        results.append({'name' : food[0], 'id' : food[1],'calories' : food[2], 'type' : 'food'})
         
       for meal in meal_hits[0:5]:
-        results.append({'MEALname': meal[0]})
+        results.append({'name': meal[0], 'id':meal[1],'calories' : 567, 'type': 'meal'}) #TODO calculate calories like in daysummary meal
     
     else: 
       results = "validation failed"
-      
+    print('RESULTS: ', results)  
   except Exception as e:
     print(e)
 
   return jsonify(results)
 
-@app.route('/day-summary')
-def get_day_summary():
-  resp = None
-  try:
-    date = request.args.get('date')
-    if date:
-      print('date finns')
-      conn = db_connect()
-      cursor = conn.cursor()
-      cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.food_id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date=:date", {"date":date})
-      row = cursor.fetchall()
-      resp = jsonify(row)
-      entries = []
-      for li in row:
-        isMeal = True if li[0] != None else False
-        if isMeal:
-          cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id=:mealId", {"mealId":str(li[2])})
-          meals = cursor.fetchall()
-          kcalCount = 0
-          weightCount = 0
-          for ingredient in meals:
-            kcalCount += 0.01 * ingredient[1] * ingredient[2]
-            weightCount +=  ingredient[2]
-            #print('adding ' +str(kcalCount)+  ' calories to meal: ' + li[0] + ' with total weight '+ str(weightCount) + ' and calories per 100g: ' + str(100*kcalCount/weightCount) )
-      
-        entries.append({
-          'name': li[0] if isMeal else li[1], 
-          'id':li[2] if isMeal else li[3], 
-          'quantity':li[4], 
-          'caloriesPer100':  round(100*kcalCount/weightCount) if isMeal else li[5],
-          'calories': round(0.01 * li[4] * li[5]) if li[5]!=None else round(kcalCount)
-        })
-      
+@app.route('/day-summary', methods = ['POST', 'GET'])
+def day_summary():
+  if request.method == 'GET':
+    resp = None
+    try:
+      date = request.args.get('date')
+      if date:
+        conn = db_connect()
+        cursor = conn.cursor()
+        cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.food_id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date=:date", {"date":date})
+        row = cursor.fetchall()
+        resp = jsonify(row)
+        entries = []
+        for li in row:
+          isMeal = True if li[0] != None else False
+          if isMeal:
+            cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id=:mealId", {"mealId":str(li[2])})
+            meals = cursor.fetchall()
+            kcalCount = 0
+            weightCount = 0
+            for ingredient in meals:
+              kcalCount += 0.01 * ingredient[1] * ingredient[2]
+              weightCount +=  ingredient[2]
+              #print('adding ' +str(kcalCount)+  ' calories to meal: ' + li[0] + ' with total weight '+ str(weightCount) + ' and calories per 100g: ' + str(100*kcalCount/weightCount) )
+        
+          entries.append({
+            'name': li[0] if isMeal else li[1], 
+            'id':li[2] if isMeal else li[3], 
+            'quantity':li[4], 
+            'caloriesPer100':  round(100*kcalCount/weightCount) if isMeal else li[5],
+            'calories': round(0.01 * li[4] * li[5]) if li[5]!=None else round(kcalCount)
+          })
+        
+      else:
+        entries = "validation failed"
+ 
+    except Exception as e:
+      print(e)
+    return jsonify(entries)
+
+  elif request.method == 'POST':
+    data = request.json
+    conn = db_connect()
+    cursor = conn.cursor()
+    if data['type'] == 'food':
+      cursor.execute("INSERT INTO calendar_entries ( food_id, date, quantity) VALUES (?,?,?)", 
+      ( data['id'], data['date'], data['quantity']))
+    elif data['type'] == 'meal':
+      cursor.execute("INSERT INTO calendar_entries ( meal_id, date, quantity) VALUES (?,?,?)", 
+      ( data['id'], data['date'], data['quantity']))
     else:
-      entries = "validation failed"
+      print('Invalid entry type: ', data['type'])
+    conn.commit()
+    return jsonify('')
+      
+     
     
-  except Exception as e:
-    print(e)
-  
-  return jsonify(entries)
