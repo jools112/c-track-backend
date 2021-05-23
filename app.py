@@ -37,6 +37,7 @@ def get_meals():
 
 @app.route('/search')
 def get_search_results():
+  status = 200
   try: 
     query = request.args.get('query')
     print('user searched for: ' + query)
@@ -57,8 +58,9 @@ def get_search_results():
         results.append({'name': meal[0], 'id':meal[1],'calories' : 567, 'type': 'meal'}) #TODO calculate calories like in daysummary meal
     
     else: 
-      results = "validation failed"
-    print('RESULTS: ', results)  
+      results = []
+      
+
   except Exception as e:
     print(e)
 
