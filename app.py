@@ -108,16 +108,30 @@ def day_summary():
     data = request.json
     conn = db_connect()
     cursor = conn.cursor()
+    response = ''
+    status = 200
+
     if data['type'] == 'food':
-      cursor.execute("INSERT INTO calendar_entries ( food_id, date, quantity) VALUES (?,?,?)", 
-      ( data['id'], data['date'], data['quantity']))
+      food_count = cursor.execute("SELECT COUNT(id) FROM food WHERE id=" + str(data['id'])).fetchall()
+      if food_count[0][0]:
+        cursor.execute("INSERT INTO calendar_entries ( food_id, date, quantity) VALUES (?,?,?)", 
+        ( data['id'], data['date'], data['quantity']))
+      else:
+        status = 400
+
     elif data['type'] == 'meal':
-      cursor.execute("INSERT INTO calendar_entries ( meal_id, date, quantity) VALUES (?,?,?)", 
-      ( data['id'], data['date'], data['quantity']))
+      meal_count = cursor.execute("SELECT COUNT(id) FROM meals WHERE id=" + str(data['id'])).fetchall()
+      if meal_count[0][0]:
+        cursor.execute("INSERT INTO calendar_entries ( meal_id, date, quantity) VALUES (?,?,?)", 
+        ( data['id'], data['date'], data['quantity']))
+      else: 
+        status = 400
+
     else:
       print('Invalid entry type: ', data['type'])
+      status = 400
     conn.commit()
-    return jsonify('')
       
+    return jsonify(response), status
      
     
