@@ -40,7 +40,6 @@ def get_search_results():
   status = 200
   try: 
     query = request.args.get('query')
-    print('user searched for: ' + query)
 
     if query:
       conn = db_connect()
@@ -51,11 +50,18 @@ def get_search_results():
       meal_hits = cursor.fetchall()
       results = []
 
-      for food in food_hits[0:5]: #TODO test new endpoint
+      for food in food_hits[0:5]:
         results.append({'name' : food[0], 'id' : food[1],'calories' : food[2], 'type' : 'food'})
         
-      for meal in meal_hits[0:5]:
-        results.append({'name': meal[0], 'id':meal[1],'calories' : 567, 'type': 'meal'}) #TODO calculate calories like in daysummary meal
+      for meal in meal_hits[0:5]: # must calculate calorie content of all ingredients in meal
+        cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id=:mealId", {"mealId":str(meal[1])})
+        selectedMeals = cursor.fetchall()
+        kcalCount = 0
+        weightCount = 0
+        for ingredient in selectedMeals:
+          kcalCount +=   ingredient[1] * ingredient[2]
+          weightCount +=  ingredient[2]
+        results.append({'name': meal[0], 'id':meal[1],'calories' : round((1/weightCount)*kcalCount), 'type': 'meal'}) 
     
     else: 
       results = []
@@ -121,7 +127,7 @@ def day_summary():
       else:
         status = 400
 
-    elif data['type'] == 'meal':
+    elif data['type'] == 'meal': #calculate the calories!!
       meal_count = cursor.execute("SELECT COUNT(id) FROM meals WHERE id=" + str(data['id'])).fetchall()
       if meal_count[0][0]:
         cursor.execute("INSERT INTO calendar_entries ( meal_id, date, quantity) VALUES (?,?,?)", 
