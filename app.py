@@ -81,7 +81,7 @@ def day_summary():
       if date:
         conn = db_connect()
         cursor = conn.cursor()
-        cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.food_id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date=:date", {"date":date})
+        cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date=:date", {"date":date})
         row = cursor.fetchall()
         resp = jsonify(row)
         entries = []
@@ -93,16 +93,17 @@ def day_summary():
             kcalCount = 0
             weightCount = 0
             for ingredient in meals:
-              kcalCount += 0.01 * ingredient[1] * ingredient[2]
-              weightCount +=  ingredient[2]
+              kcalCount += ingredient[1] * 0.01 * ingredient[2]
+              weightCount +=  0.01 * ingredient[2]
               #print('adding ' +str(kcalCount)+  ' calories to meal: ' + li[0] + ' with total weight '+ str(weightCount) + ' and calories per 100g: ' + str(100*kcalCount/weightCount) )
-        
+            kcalPer100Meal = kcalCount/weightCount
+
           entries.append({
             'name': li[0] if isMeal else li[1], 
-            'id':li[2] if isMeal else li[3], 
+            'id':li[3], 
             'quantity':li[4], 
-            'caloriesPer100':  round(100*kcalCount/weightCount) if isMeal else li[5],
-            'calories': round(0.01 * li[4] * li[5]) if li[5]!=None else round(kcalCount)
+            'caloriesPer100':  round(kcalPer100Meal) if isMeal else li[5],
+            'calories': round(0.01 * li[4] * li[5]) if li[5]!=None else round(0.01*kcalPer100Meal*li[4])
           })
         
       else:
