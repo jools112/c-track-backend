@@ -72,7 +72,7 @@ def get_search_results():
 
   return jsonify(results)
 
-@app.route('/day-summary', methods = ['POST', 'GET'])
+@app.route('/day-summary', methods = ['POST', 'GET', 'DELETE'])
 def day_summary():
   if request.method == 'GET':
     resp = None
@@ -95,7 +95,6 @@ def day_summary():
             for ingredient in meals:
               kcalCount += ingredient[1] * 0.01 * ingredient[2]
               weightCount +=  0.01 * ingredient[2]
-              #print('adding ' +str(kcalCount)+  ' calories to meal: ' + li[0] + ' with total weight '+ str(weightCount) + ' and calories per 100g: ' + str(100*kcalCount/weightCount) )
             kcalPer100Meal = kcalCount/weightCount
 
           entries.append({
@@ -142,5 +141,14 @@ def day_summary():
     conn.commit()
       
     return jsonify(response), status
-     
-    
+
+  elif request.method == 'DELETE':
+    data = request.json
+    conn = db_connect()
+    cursor = conn.cursor()
+    response = ''
+    status = 200
+   
+    cursor.execute("DELETE FROM calendar_entries WHERE id=" + str(data['id'])) 
+    conn.commit()
+    return jsonify(response), status
