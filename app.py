@@ -72,47 +72,11 @@ def get_search_results():
 
   return jsonify(results)
 
-@app.route('/day-summary', methods = ['POST', 'GET', 'DELETE'])
+@app.route('/day-summary', methods = ['POST', 'GET', 'PATCH', 'DELETE'])
 def day_summary():
-  if request.method == 'GET':
-    resp = None
-    try:
-      date = request.args.get('date')
-      if date:
-        conn = db_connect()
-        cursor = conn.cursor()
-        cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date=:date", {"date":date})
-        row = cursor.fetchall()
-        resp = jsonify(row)
-        entries = []
-        for li in row:
-          isMeal = True if li[0] != None else False
-          if isMeal:
-            cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id=:mealId", {"mealId":str(li[2])})
-            meals = cursor.fetchall()
-            kcalCount = 0
-            weightCount = 0
-            for ingredient in meals:
-              kcalCount += ingredient[1] * 0.01 * ingredient[2]
-              weightCount +=  0.01 * ingredient[2]
-            kcalPer100Meal = kcalCount/weightCount
+  
 
-          entries.append({
-            'name': li[0] if isMeal else li[1], 
-            'id':li[3], 
-            'quantity':li[4], 
-            'caloriesPer100':  round(kcalPer100Meal) if isMeal else li[5],
-            'calories': round(0.01 * li[4] * li[5]) if li[5]!=None else round(0.01*kcalPer100Meal*li[4])
-          })
-        
-      else:
-        entries = "validation failed"
- 
-    except Exception as e:
-      print(e)
-    return jsonify(entries)
-
-  elif request.method == 'POST':
+  if request.method == 'POST':
     data = request.json
     conn = db_connect()
     cursor = conn.cursor()
@@ -141,6 +105,65 @@ def day_summary():
     conn.commit()
       
     return jsonify(response), status
+
+  elif request.method == 'GET':
+      resp = None
+      try:
+        date = request.args.get('date')
+        if date:
+          conn = db_connect()
+          cursor = conn.cursor()
+          cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date=:date", {"date":date})
+          row = cursor.fetchall()
+          resp = jsonify(row)
+          entries = []
+          for li in row:
+            isMeal = True if li[0] != None else False
+            if isMeal:
+              cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id=:mealId", {"mealId":str(li[2])})
+              meals = cursor.fetchall()
+              kcalCount = 0
+              weightCount = 0
+              for ingredient in meals:
+                kcalCount += ingredient[1] * 0.01 * ingredient[2]
+                weightCount +=  0.01 * ingredient[2]
+              kcalPer100Meal = kcalCount/weightCount
+
+            entries.append({
+              'name': li[0] if isMeal else li[1], 
+              'id':li[3], 
+              'quantity':li[4], 
+              'caloriesPer100':  round(kcalPer100Meal) if isMeal else li[5],
+              'calories': round(0.01 * li[4] * li[5]) if li[5]!=None else round(0.01*kcalPer100Meal*li[4])
+            })
+          
+        else:
+          entries = "GET validation failed"
+  
+      except Exception as e:
+        print(e)
+      return jsonify(entries)
+
+  elif request.method == 'PATCH':
+    response = ''
+    status = 200
+
+    try:
+      data = request.json
+      date = request.args.get('date')
+      entry_id = request.args.get('id')
+      quantity = data['quantity']
+      conn = db_connect()
+      cursor = conn.cursor()
+      #schtuff = cursor.fetchall()
+      print('date and id : ' + date + ' and ' + entry_id + ' and data: ' + str(quantity))
+
+      cursor.execute("UPDATE calendar_entries SET quantity=" + str(quantity) + " WHERE id=" + str(entry_id))
+      conn.commit()
+    except Exception as e:
+      print(e)
+
+    return jsonify(response)
 
   elif request.method == 'DELETE':
     data = request.json
