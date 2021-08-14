@@ -74,12 +74,40 @@ def get_search_results():
 
 @app.route('/day-summary', methods = ['POST', 'GET', 'PATCH', 'DELETE'])
 def day_summary():
-  
 
+  def get_entry(meal_name, food_name, calendar_meal_id, calendar_id, quantity, calories):
+    """ 
+      indata: mealname?, foodname?, calendar_mealid?, calendarid, quantity, calories?    
+      bestäm om meal eller food
+      om meal: hämta alla ingredienser och räkna
+      i båda fallen, hämta info och skapa entry
+    """
+
+    isMeal = True if meal_name != None else False
+    if isMeal:
+      cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id=:mealId", {"mealId":str(calendar_meal_id)})
+      meals = cursor.fetchall()
+      kcalCount = 0
+      weightCount = 0
+      for ingredient in meals:
+        kcalCount += ingredient[1] * 0.01 * ingredient[2]
+        weightCount +=  0.01 * ingredient[2]
+      kcalPer100Meal = kcalCount/weightCount
+
+    entry = {
+      'name': meal_name if isMeal else food_name, 
+      'id':calendar_id, 
+      'quantity':quantity, 
+      'caloriesPer100':  round(kcalPer100Meal) if isMeal else calories,
+      'calories': round(0.01*kcalPer100Meal*quantity) if isMeal else round(0.01 * quantity * calories)
+    }
+    return entry
+  
+  data = request.json
+  conn = db_connect()
+  cursor = conn.cursor()
+  
   if request.method == 'POST':
-    data = request.json
-    conn = db_connect()
-    cursor = conn.cursor()
     response = ''
     status = 200
 
@@ -110,14 +138,13 @@ def day_summary():
       resp = None
       try:
         date = request.args.get('date')
-        if date:
-          conn = db_connect()
-          cursor = conn.cursor()
+        if date:         
           cursor.execute("SELECT m.name, f.name, ce.meal_id, ce.id, ce.quantity, f.calories FROM calendar_entries as ce LEFT JOIN meals m on ce.meal_id=m.id LEFT JOIN food f on ce.food_id=f.id WHERE ce.date=:date", {"date":date})
           row = cursor.fetchall()
           resp = jsonify(row)
           entries = []
           for li in row:
+            """
             isMeal = True if li[0] != None else False
             if isMeal:
               cursor.execute("SELECT mf.food_id, f.calories, mf.quantity FROM meal_food as mf LEFT JOIN food f on mf.food_id=f.id WHERE meal_id=:mealId", {"mealId":str(li[2])})
@@ -135,7 +162,8 @@ def day_summary():
               'quantity':li[4], 
               'caloriesPer100':  round(kcalPer100Meal) if isMeal else li[5],
               'calories': round(0.01 * li[4] * li[5]) if li[5]!=None else round(0.01*kcalPer100Meal*li[4])
-            })
+            })"""
+            entries.append(get_entry(li[0], li[1], li[2], li[3], li[4], li[5]))
           
         else:
           entries = "GET validation failed"
@@ -149,13 +177,12 @@ def day_summary():
     status = 200
 
     try:
-      data = request.json
+     
       date = request.args.get('date')
       entry_id = request.args.get('id')
       quantity = data['quantity']
-      conn = db_connect()
-      cursor = conn.cursor()
-      #schtuff = cursor.fetchall()
+   
+        #schtuff = cursor.fetchall()
       print('date and id : ' + date + ' and ' + entry_id + ' and data: ' + str(quantity))
 
       cursor.execute("UPDATE calendar_entries SET quantity=" + str(quantity) + " WHERE id=" + str(entry_id))
@@ -166,8 +193,7 @@ def day_summary():
     return jsonify(response)
 
   elif request.method == 'DELETE':
-    data = request.json
-    conn = db_connect()
+
     cursor = conn.cursor()
     response = ''
     status = 200
