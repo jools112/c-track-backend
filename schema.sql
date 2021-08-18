@@ -38,6 +38,12 @@ CREATE TABLE meals (
     name STRING
 );
 
+-- Table: measurements
+CREATE TABLE measurements (
+    date   DATE PRIMARY KEY,
+    weight REAL
+);
+
 
 COMMIT TRANSACTION;
 PRAGMA foreign_keys = on;

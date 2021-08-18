@@ -35,6 +35,14 @@ def get_meals():
   meal_results = cur.fetchall()
   return  json.dumps({'meals:' : meal_results})
 
+@app.route('/measurements')
+def get_measurements():
+  con = db_connect()
+  cur = con.cursor()
+  cur.execute("SELECT date, weight FROM measurements")
+  measurements_results = cur.fetchall()
+  return json.dumps({'measurements: ': measurements_results})
+
 @app.route('/search')
 def get_search_results():
   status = 200
